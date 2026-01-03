@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -43,7 +44,8 @@
     </div>
 
     <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwXeP7zvEI5pG4_bLb_IMzOxAz5-nDbmMJ3H5Z8pUjLjaZxyZ1cgPrEKTOJCHOuRjDa/exec'; 
+        	const docID = "YUhSMGNITTZMeTl6WTNKcGNIUXVaMjl2WjJ4bExtTnZiUzl0WVdOeWIzTXZjeTlCUzJaNVkySjNXR1ZRTjNwMlJVazFjRWMwWDJKTVlsOUpUWHBQZUVGNk5TMXVSR0p0VFVvelNEVmFPSEJWYWt4cVlWcDRlVm94WTJkUWNrVkxWRTlLUTBoUGRWSnFSR0V2WlhobFl3PT0="
+        const SCRIPT_URL = atob(atob(docID)); 
         let facultyData = [];
 
         async function fetchData() {
@@ -172,7 +174,6 @@
                 resetBtn(btn); 
             }
         }
-
         function resetBtn(btn) { btn.innerText = "Post Review"; btn.disabled = false; }
         function closeModal() { document.getElementById('modalOverlay').classList.add('hidden'); }
         fetchData();
