@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FacultyRate | Secure Review Portal</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); min-height: 100vh; color: white; }
+        .glass-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        /* SweetAlert Custom Dark Theme */
+        .swal2-popup { background: #1e293b !important; color: white !important; border-radius: 20px !important; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <header class="max-w-6xl mx-auto mb-10 text-center">
+        <h1 class="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400 mb-4">Faculty Review</h1>
+        <div class="max-w-md mx-auto">
+            <input type="text" id="searchInput" onkeyup="filterFaculty()" placeholder="Search faculty..." 
+                class="w-full bg-white/10 border border-white/20 rounded-full py-3 px-6 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-2xl">
+        </div>
+    </header>
+
+    <div id="loading" class="flex flex-col justify-center items-center h-64">
+        <div class="loader mb-4"></div>
+        <p class="text-blue-400 animate-pulse font-medium">Loading...</p>
+    </div>
+
+    <main id="facultyGrid" class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"></main>
+
+    <div id="modalOverlay" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div id="modalContent" class="glass-card w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 md:p-10 relative custom-scrollbar">
+            <button onclick="closeModal()" class="absolute top-4 right-6 text-4xl text-slate-400 hover:text-white">&times;</button>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwXeP7zvEI5pG4_bLb_IMzOxAz5-nDbmMJ3H5Z8pUjLjaZxyZ1cgPrEKTOJCHOuRjDa/exec'; 
+        let facultyData = [];
+
+        async function fetchData() {
+            try {
+                const response = await fetch(SCRIPT_URL);
+                const data = await response.json();
+                facultyData = data;
+                document.getElementById('loading').classList.add('hidden');
+                displayFaculty(facultyData);
+            } catch (e) { document.getElementById('loading').innerHTML = `<p class="text-red-400">Error Loading Data</p>`; }
+        }
+
+        function renderStars(rating) {
+            let stars = '';
+            for (let i = 1; i <= 5; i++) stars += `<span class="${i <= Math.round(rating) ? 'text-yellow-400' : 'text-slate-600'}">★</span>`;
+            return stars;
+        }
+
+        function displayFaculty(data) {
+            const grid = document.getElementById('facultyGrid');
+            grid.innerHTML = data.map(f => {
+                const reviews = f.reviews || [];
+                const avg = reviews.length ? (reviews.reduce((a,b) => a + b.score, 0) / reviews.length).toFixed(1) : "0.0";
+                return `
+                <div class="glass-card rounded-3xl p-6 hover:-translate-y-2 transition-all group">
+                    <img src="${f.image || ''}" class="w-full h-48 object-cover rounded-2xl mb-5 bg-slate-800" onerror="this.src='https://via.placeholder.com/400x300'">
+                    <h3 class="text-2xl font-bold text-white mb-1">${f.name}</h3>
+                    <p class="text-blue-400 text-sm font-semibold mb-4 uppercase tracking-wider">${f.dept}</p>
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="text-xl">${renderStars(avg)}</div>
+                        <span class="text-sm text-slate-400 font-mono">${avg} / 5.0</span>
+                    </div>
+                    <button onclick="openModal('${f.id}')" class="w-full bg-blue-600/20 group-hover:bg-blue-600 py-3 rounded-xl border border-blue-500/30 transition-all font-bold">View Details</button>
+                </div>`;
+            }).join('');
+        }
+
+        function filterFaculty() {
+            const q = document.getElementById('searchInput').value.toLowerCase();
+            displayFaculty(facultyData.filter(f => f.name.toLowerCase().includes(q) || f.dept.toLowerCase().includes(q)));
+        }
+
+        function openModal(id) {
+            const f = facultyData.find(x => String(x.id) === String(id));
+            if (!f) return;
+            const reviews = f.reviews || [];
+            
+            document.getElementById('modalBody').innerHTML = `
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                    <div>
+                        <div class="flex items-center gap-6 mb-8">
+                            <img src="${f.image}" class="w-24 h-24 rounded-2xl object-cover border border-white/10">
+                            <div><h2 class="text-3xl font-bold">${f.name}</h2><p class="text-blue-400">${f.designation}</p></div>
+                        </div>
+                        <p class="text-slate-400 italic mb-8">"${f.bio || 'No bio.'}"</p>
+                        <h4 class="font-bold text-xl mb-4">Reviews (${reviews.length})</h4>
+                        <div class="space-y-4 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+                            ${reviews.length ? reviews.map(r => `<div class="bg-white/5 p-4 rounded-xl border border-white/5">
+                                <div class="flex justify-between mb-2"><span class="text-blue-300 text-sm font-bold">${r.user}</span><span>${renderStars(r.score)}</span></div>
+                                <p class="text-sm text-slate-400 italic">"${r.text}"</p>
+                            </div>`).reverse().join('') : '<p class="text-slate-500 italic">No reviews yet.</p>'}
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-6 rounded-2xl border-white/10 h-fit">
+                        <div class="mb-6 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex gap-3 items-center">
+                            <span class="text-amber-500">⚠️</span>
+                            <p class="text-[10px] text-slate-300 uppercase font-bold tracking-tighter">One review per student allowed.</p>
+                        </div>
+                        <h4 class="font-bold text-xl mb-6">Write a Review</h4>
+                        <div class="space-y-4">
+                            <input id="stdId" type="number" placeholder="Student ID" class="w-full bg-white/5 border border-white/10 p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm">
+                            <input id="stdName" type="text" placeholder="Your Name" class="w-full bg-white/5 border border-white/10 p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm">
+                            <select id="stdScore" class="w-full bg-slate-800 border border-white/10 p-3 rounded-xl outline-none text-sm">
+                                <option value="5">⭐⭐⭐⭐⭐ Excellent</option><option value="4">⭐⭐⭐⭐ Great</option><option value="3">⭐⭐⭐ Good</option><option value="2">⭐⭐ Fair</option><option value="1">⭐ Poor</option>
+                            </select>
+                            <textarea id="stdText" placeholder="Your comment..." rows="3" class="w-full bg-white/5 border border-white/10 p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"></textarea>
+                            <button onclick="submitReview('${f.id}')" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95">Post Review</button>
+                        </div>
+                    </div>
+                </div>`;
+            document.getElementById('modalOverlay').classList.remove('hidden');
+        }
+
+        async function submitReview(fId) {
+            const btn = document.getElementById('submitBtn');
+            const stdId = document.getElementById('stdId').value.trim();
+            const text = document.getElementById('stdText').value.trim();
+            
+            if (!stdId || !text) {
+                Swal.fire({ icon: 'warning', title: 'Missing Info', text: 'Please provide both Student ID and a comment.' });
+                return;
+            }
+
+            btn.innerText = "Processing...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        facultyId: fId, studentId: stdId,
+                        user: document.getElementById('stdName').value.trim() || "Anonymous",
+                        score: parseInt(document.getElementById('stdScore').value), text: text
+                    })
+                });
+                const result = await res.text();
+                
+                if (result === "Success") {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Review Posted!',
+                        text: 'Thank you for your feedback.',
+                        showConfirmButton: false,
+                        timer: 2000
+                    }).then(() => location.reload());
+                } else if (result === "Duplicate") {
+                    Swal.fire({ icon: 'error', title: 'Denied', text: 'You have already reviewed this teacher.' });
+                    resetBtn(btn);
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Invalid ID', text: 'This Student ID is not authorized.' });
+                    resetBtn(btn);
+                }
+            } catch (e) { 
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Could not connect to server.' });
+                resetBtn(btn); 
+            }
+        }
+
+        function resetBtn(btn) { btn.innerText = "Post Review"; btn.disabled = false; }
+        function closeModal() { document.getElementById('modalOverlay').classList.add('hidden'); }
+        fetchData();
+    </script>
+</body>
+</html>
